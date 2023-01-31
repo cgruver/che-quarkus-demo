@@ -1,0 +1,14 @@
+schemaVersion: 2.2.0
+attributes:
+  controller.devfile.io/storage-type: per-workspace
+metadata:
+  name: podman-dev
+components:
+- name: podman
+  container: 
+    image: image-registry.openshift-image-registry.svc:5000/eclipse-che-images/quarkus:latest
+    memoryLimit: 6Gi
+    mountSources: true
+- volume:
+    size: 4Gi
+  name: projects
