@@ -9,6 +9,12 @@ components:
     image: image-registry.openshift-image-registry.svc:5000/eclipse-che-images/quarkus:latest
     memoryLimit: 6Gi
     mountSources: true
+    volumeMounts:
+    - name: m2
+      path: /home/user/.m2
 - volume:
     size: 4Gi
   name: projects
+- volume:
+    size: 2Gi
+  name: m2
