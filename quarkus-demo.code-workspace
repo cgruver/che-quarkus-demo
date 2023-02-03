@@ -13,8 +13,7 @@
 			"mhutchie.git-graph",
 			"eamodio.gitlens",
 			"streetsidesoftware.code-spell-checker",
-			"johnpapa.winteriscoming",
-			"ms-azuretools.vscode-docker"
+			"johnpapa.winteriscoming"
 		]
 	},
 	"settings": {
