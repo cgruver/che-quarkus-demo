@@ -34,7 +34,13 @@ The first step, is to install OpenShift Local if you don't already have it.
 
    __Note:__ This will take a while.  OpenShift Local will first download the latest cluster bundle, decompress it, and set up your system to run the cluster.
 
-1. Configure your OpenShift Local cluster: __Note:__ You need at least 16GB of RAM on your workstation, 32GB is better.  We're going to configure the OpenShift machine with 12GB.  
+1. Configure your OpenShift Local cluster: __Note:__ You need at least 16GB of RAM on your workstation, 32GB is better. 
+
+  Adjust the settings below based on your workstation config.
+
+  If you only have 16GB of RAM, change `memory 16384` to `memory 12288`.
+
+  If you only have 2 CPU cores, (4 threads), then change `cpus 6` to `cpus 4`
 
    ```bash
    crc config set cpus 6
@@ -76,237 +82,271 @@ The first step, is to install OpenShift Local if you don't already have it.
 
 ## Install the OpenShift Dev Spaces Operator
 
-![Demo Image](./readme-images/operator-hub.png)
+1. Launch the OpenShift console in your browser:
 
-![Demo Image](./readme-images/operator-search.png)
+   ```bash
+   crc console
+   ```
 
-![Demo Image](./readme-images/operator-install-select.png)
+1. Log in with user: `kubeadmin`, password: `crc-admin`
 
-![Demo Image](./readme-images/operator-install-confirm.png)
+1. Navigate to the `Operator Hub`
 
-![Demo Image](./readme-images/operator-installing.png)
+   ![Demo Image](./readme-images/operator-hub.png)
 
-![Demo Image](./readme-images/installed-operators.png)
+1. Type `dev spaces` into the search, and select `Red Hat OpenShift Dev Spaces`:
+
+   ![Demo Image](./readme-images/operator-search.png)
+
+1. Click `Install`:
+
+   ![Demo Image](./readme-images/operator-install-select.png)
+
+1. Click `Install`:
+
+   ![Demo Image](./readme-images/operator-install-confirm.png)
+
+   The Operator should begin installing:
+
+   ![Demo Image](./readme-images/operator-installing.png)
+
+1. Observe the installed Operators, by clicking on `Installed Operators`  underneath `Operator Hub` in the left nav menu bar:
+
+   ![Demo Image](./readme-images/installed-operators.png)
 
 ## Create the OpenShift Dev Spaces CheCluster Instance
 
-```bash
-oc login -u kubeadmin -p crc-admin https://api.crc.testing:6443
-```
+1. Open a terminal and login to the OpenShift Local instance with the CLI:
 
-```bash
-cat << EOF | oc apply -f -
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: openshift-devspaces
----
-apiVersion: org.eclipse.che/v2
-kind: CheCluster
-metadata:
-  name: devspaces
-  namespace: openshift-devspaces
-spec:
-  components:
-    cheServer:
-      debug: false
-      logLevel: INFO
-    database:
-      credentialsSecretName: postgres-credentials
-      externalDb: false
-      postgresDb: dbche
-      postgresHostName: postgres
-      postgresPort: '5432'
-      pvc:
-        claimSize: 1Gi
-    metrics:
-      enable: true
-  containerRegistry: {}
-  devEnvironments:
-    secondsOfRunBeforeIdling: -1
-    containerBuildConfiguration:
-      openShiftSecurityContextConstraint: container-build
-    disableContainerBuildCapabilities: false
-    defaultEditor: che-incubator/che-code/insiders
-    defaultNamespace:
-      autoProvision: true
-      template: <username>-devspaces
-    secondsOfInactivityBeforeIdling: 1800
-    storage:
-      pvcStrategy: per-user
-  gitServices: {}
-  networking: {}
-EOF
-```
+   ```bash
+   oc login -u kubeadmin -p crc-admin https://api.crc.testing:6443
+   ```
 
-```bash
-cat << EOF | oc apply -f -
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: quarkus-dev-services
-rules:
-- apiGroups:
-  - batch
-  resources:
-  - jobs
-  - jobs/status
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods/portforward
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - delete
-  - deletecollection
-  - patch
-  - update
-EOF
-```
+   ```bash
+   cat << EOF | oc apply -f -
+   apiVersion: v1
+   kind: Namespace
+   metadata:
+     name: openshift-devspaces
+   ---
+   apiVersion: org.eclipse.che/v2
+   kind: CheCluster
+   metadata:
+     name: devspaces
+     namespace: openshift-devspaces
+   spec:
+     components:
+       cheServer:
+         debug: false
+         logLevel: INFO
+       database:
+         credentialsSecretName: postgres-credentials
+         externalDb: false
+         postgresDb: dbche
+         postgresHostName: postgres
+         postgresPort: '5432'
+         pvc:
+           claimSize: 1Gi
+       metrics:
+         enable: true
+     containerRegistry: {}
+     devEnvironments:
+       secondsOfRunBeforeIdling: -1
+       containerBuildConfiguration:
+         openShiftSecurityContextConstraint: container-build
+       disableContainerBuildCapabilities: false
+       defaultEditor: che-incubator/che-code/insiders
+       defaultNamespace:
+         autoProvision: true
+         template: <username>-devspaces
+       secondsOfInactivityBeforeIdling: 1800
+       storage:
+         pvcStrategy: per-user
+     gitServices: {}
+     networking: {}
+   EOF
+   ```
 
-```bash
-cat << EOF | oc apply -f -
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: eclipse-che-images
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: system:image-puller
-  namespace: eclipse-che-images
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: system:image-puller
-subjects:
-- apiGroup: rbac.authorization.k8s.io
-  kind: Group
-  name: system:serviceaccounts
----
-apiVersion: image.openshift.io/v1
-kind: ImageStream
-metadata:
-  name: quarkus
-  namespace: eclipse-che-images
----
-apiVersion: build.openshift.io/v1
-kind: BuildConfig
-metadata:
-  name: quarkus
-  namespace: eclipse-che-images
-spec:
-  source:
-    images:
-      - from:
-          kind: ImageStreamTag
-          name: 'cli:latest'
-          namespace: openshift
-        paths:
-        - destinationDir: .
-          sourcePath: /usr/bin/oc
-    dockerfile: |
-      FROM registry.access.redhat.com/ubi9/ubi-minimal
-      ARG USER_HOME_DIR="/home/user"
-      ARG WORK_DIR="/projects"
-      ARG MAVEN_VERSION=3.8.7
-      ARG QUARKUS_VERSION=2.16.1.Final
-      ARG BASE_URL=https://apache.osuosl.org/maven/maven-3/\${MAVEN_VERSION}/binaries
-      ARG JAVA_PACKAGE=java-17-openjdk-devel
-      ARG MANDREL_VERSION=22.3.0.1-Final
-      ARG USER_HOME_DIR="/home/user"
-      ARG WORK_DIR="/projects"
-      ARG GRAALVM_DIR=/opt/mandral
-      ARG KUBEDOCK_VERSION=0.9.2
-      ENV HOME=\${USER_HOME_DIR}
-      ENV BUILDAH_ISOLATION=chroot
-      ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
-      ENV MAVEN_HOME=/usr/share/maven
-      ENV MAVEN_CONFIG="\${HOME}/.m2"
-      ENV GRAALVM_HOME=\${GRAALVM_DIR}
-      ENV JAVA_HOME=/etc/alternatives/jre_17_openjdk
-      COPY oc /usr/bin/oc
-      RUN microdnf --disableplugin=subscription-manager install -y openssl compat-openssl11 libbrotli git tar gzip zip unzip which shadow-utils bash zsh wget jq podman buildah skopeo glibc-devel zlib-devel gcc libffi-devel libstdc++-devel gcc-c++ glibc-langpack-en ca-certificates \${JAVA_PACKAGE}; \
-        microdnf update -y ; \
-        microdnf clean all ; \
-        mkdir -p \${USER_HOME_DIR} ; \
-        mkdir -p \${WORK_DIR} ; \
-        mkdir -p /usr/local/bin ; \
-        setcap cap_setuid+ep /usr/bin/newuidmap ; \
-        setcap cap_setgid+ep /usr/bin/newgidmap ; \
-        mkdir -p "\${HOME}"/.config/containers ; \
-        (echo '[storage]';echo 'driver = "vfs"') > "\${HOME}"/.config/containers/storage.conf ; \
-        touch /etc/subgid /etc/subuid ; \
-        chmod -R g=u /etc/passwd /etc/group /etc/subuid /etc/subgid ; \
-        echo user:20000:65536 > /etc/subuid  ; \
-        echo user:20000:65536 > /etc/subgid ; \
-        TEMP_DIR="\$(mktemp -d)" ; \
-        mkdir -p /usr/share/maven /usr/share/maven/ref ; \
-        curl -fsSL -o \${TEMP_DIR}/apache-maven.tar.gz \${BASE_URL}/apache-maven-\${MAVEN_VERSION}-bin.tar.gz ; \
-        tar -xzf \${TEMP_DIR}/apache-maven.tar.gz -C /usr/share/maven --strip-components=1 ; \
-        ln -s /usr/share/maven/bin/mvn /usr/bin/mvn ; \
-        rm -rf "\${TEMP_DIR}" ; \
-        mkdir -p \${GRAALVM_DIR} ; \
-        TEMP_DIR="\$(mktemp -d)" ; \
-        curl -fsSL -o \${TEMP_DIR}/mandrel-java11-linux-amd64-\${MANDREL_VERSION}.tar.gz https://github.com/graalvm/mandrel/releases/download/mandrel-\${MANDREL_VERSION}/mandrel-java17-linux-amd64-\${MANDREL_VERSION}.tar.gz ; \
-        tar xzf \${TEMP_DIR}/mandrel-java11-linux-amd64-\${MANDREL_VERSION}.tar.gz -C \${GRAALVM_DIR} --strip-components=1 ; \
-        rm -rf "\${TEMP_DIR}" ; \
-        TEMP_DIR="\$(mktemp -d)" ; \
-        YQ_VER="\$(basename \$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/mikefarah/yq/releases/latest))" ; \
-        curl -fsSL -o \${TEMP_DIR}/yq.tar.gz https://github.com/mikefarah/yq/releases/download/\${YQ_VER}/yq_linux_amd64.tar.gz ; \
-        tar -xzf \${TEMP_DIR}/yq.tar.gz -C \${TEMP_DIR} ; \
-        cp \${TEMP_DIR}/yq_linux_amd64 /usr/local/bin/yq ; \
-        chmod +x /usr/local/bin/yq ; \
-        rm -rf "\${TEMP_DIR}" ; \
-        mkdir -p /usr/local/quarkus-cli/lib ; \
-        mkdir /usr/local/quarkus-cli/bin ; \
-        TEMP_DIR="\$(mktemp -d)" ; \
-        curl -fsSL -o \${TEMP_DIR}/quarkus-cli.tgz https://github.com/quarkusio/quarkus/releases/download/\${QUARKUS_VERSION}/quarkus-cli-\${QUARKUS_VERSION}.tar.gz ; \
-        tar -xzf \${TEMP_DIR}/quarkus-cli.tgz -C \${TEMP_DIR} ; \
-        cp \${TEMP_DIR}/quarkus-cli-\${QUARKUS_VERSION}/bin/quarkus /usr/local/quarkus-cli/bin ; \
-        cp \${TEMP_DIR}/quarkus-cli-\${QUARKUS_VERSION}/lib/quarkus-cli-\${QUARKUS_VERSION}-runner.jar /usr/local/quarkus-cli/lib ; \
-        rm -rf "\${TEMP_DIR}" ; \
-        chmod +x /usr/local/quarkus-cli/bin/quarkus ; \
-        ln -s /usr/local/quarkus-cli/bin/quarkus /usr/local/bin/quarkus ; \
-        TEMP_DIR="\$(mktemp -d)" ; \
-        cd "\${TEMP_DIR}"; \
-        curl -fsSL -o kubedock.tgz https://github.com/joyrex2001/kubedock/releases/download/\${KUBEDOCK_VERSION}/kubedock_\${KUBEDOCK_VERSION}_linux_amd64.tar.gz ; \
-        tar -xzf kubedock.tgz ; \
-        cp kubedock /usr/local/bin ; \
-        chmod +x /usr/local/bin/kubedock ; \
-        rm -rf "\${TEMP_DIR}" ; \
-        chgrp -R 0 /home ; \
-        chmod -R g=u /home \${WORK_DIR}
-      USER 10001
-      WORKDIR \${WORK_DIR}
-  strategy:
-    type: Docker
-  output:
-    to:
-      kind: ImageStreamTag
-      name: quarkus:latest
-EOF
-```
+   ```bash
+   cat << EOF | oc apply -f -
+   apiVersion: rbac.authorization.k8s.io/v1
+   kind: ClusterRole
+   metadata:
+     name: quarkus-dev-services
+   rules:
+   - apiGroups:
+     - batch
+     resources:
+     - jobs
+     - jobs/status
+     verbs:
+     - get
+     - list
+     - watch
+   - apiGroups:
+     - ""
+     resources:
+     - pods/portforward
+     verbs:
+     - get
+     - list
+     - watch
+     - create
+     - delete
+     - deletecollection
+     - patch
+     - update
+   EOF
+   ```
 
-```bash
-oc start-build quarkus -n eclipse-che-images -F
-```
+   ```bash
+   cat << EOF | oc apply -f -
+   apiVersion: v1
+   kind: Namespace
+   metadata:
+     name: eclipse-che-images
+   ---
+   apiVersion: rbac.authorization.k8s.io/v1
+   kind: RoleBinding
+   metadata:
+     name: system:image-puller
+     namespace: eclipse-che-images
+   roleRef:
+     apiGroup: rbac.authorization.k8s.io
+     kind: ClusterRole
+     name: system:image-puller
+   subjects:
+   - apiGroup: rbac.authorization.k8s.io
+     kind: Group
+     name: system:serviceaccounts
+   ---
+   apiVersion: image.openshift.io/v1
+   kind: ImageStream
+   metadata:
+     name: quarkus
+     namespace: eclipse-che-images
+   ---
+   apiVersion: build.openshift.io/v1
+   kind: BuildConfig
+   metadata:
+     name: quarkus
+     namespace: eclipse-che-images
+   spec:
+     source:
+       images:
+         - from:
+             kind: ImageStreamTag
+             name: 'cli:latest'
+             namespace: openshift
+           paths:
+           - destinationDir: .
+             sourcePath: /usr/bin/oc
+       dockerfile: |
+         FROM registry.access.redhat.com/ubi9/ubi-minimal
+         ARG USER_HOME_DIR="/home/user"
+         ARG WORK_DIR="/projects"
+         ARG MAVEN_VERSION=3.8.7
+         ARG QUARKUS_VERSION=2.16.1.Final
+         ARG BASE_URL=https://apache.osuosl.org/maven/maven-3/\${MAVEN_VERSION}/binaries
+         ARG JAVA_PACKAGE=java-17-openjdk-devel
+         ARG MANDREL_VERSION=22.3.0.1-Final
+         ARG USER_HOME_DIR="/home/user"
+         ARG WORK_DIR="/projects"
+         ARG GRAALVM_DIR=/opt/mandral
+         ARG KUBEDOCK_VERSION=0.9.2
+         ENV HOME=\${USER_HOME_DIR}
+         ENV BUILDAH_ISOLATION=chroot
+         ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+         ENV MAVEN_HOME=/usr/share/maven
+         ENV MAVEN_CONFIG="\${HOME}/.m2"
+         ENV GRAALVM_HOME=\${GRAALVM_DIR}
+         ENV JAVA_HOME=/etc/alternatives/jre_17_openjdk
+         COPY oc /usr/bin/oc
+         RUN microdnf --disableplugin=subscription-manager install -y openssl compat-openssl11 libbrotli git tar gzip zip unzip which shadow-utils bash zsh wget jq podman buildah skopeo glibc-devel zlib-devel gcc libffi-devel libstdc++-devel gcc-c++ glibc-langpack-en ca-certificates \${JAVA_PACKAGE}; \
+           microdnf update -y ; \
+           microdnf clean all ; \
+           mkdir -p \${USER_HOME_DIR} ; \
+           mkdir -p \${WORK_DIR} ; \
+           mkdir -p /usr/local/bin ; \
+           setcap cap_setuid+ep /usr/bin/newuidmap ; \
+           setcap cap_setgid+ep /usr/bin/newgidmap ; \
+           mkdir -p "\${HOME}"/.config/containers ; \
+           (echo '[storage]';echo 'driver = "vfs"') > "\${HOME}"/.config/containers/storage.conf ; \
+           touch /etc/subgid /etc/subuid ; \
+           chmod -R g=u /etc/passwd /etc/group /etc/subuid /etc/subgid ; \
+           echo user:20000:65536 > /etc/subuid  ; \
+           echo user:20000:65536 > /etc/subgid ; \
+           TEMP_DIR="\$(mktemp -d)" ; \
+           mkdir -p /usr/share/maven /usr/share/maven/ref ; \
+           curl -fsSL -o \${TEMP_DIR}/apache-maven.tar.gz \${BASE_URL}/apache-maven-\${MAVEN_VERSION}-bin.tar.gz ; \
+           tar -xzf \${TEMP_DIR}/apache-maven.tar.gz -C /usr/share/maven --strip-components=1 ; \
+           ln -s /usr/share/maven/bin/mvn /usr/bin/mvn ; \
+           rm -rf "\${TEMP_DIR}" ; \
+           mkdir -p \${GRAALVM_DIR} ; \
+           TEMP_DIR="\$(mktemp -d)" ; \
+           curl -fsSL -o \${TEMP_DIR}/mandrel-java11-linux-amd64-\${MANDREL_VERSION}.tar.gz https://github.com/graalvm/mandrel/releases/download/mandrel-\${MANDREL_VERSION}/mandrel-java17-linux-amd64-\${MANDREL_VERSION}.tar.gz ; \
+           tar xzf \${TEMP_DIR}/mandrel-java11-linux-amd64-\${MANDREL_VERSION}.tar.gz -C \${GRAALVM_DIR} --strip-components=1 ; \
+           rm -rf "\${TEMP_DIR}" ; \
+           TEMP_DIR="\$(mktemp -d)" ; \
+           YQ_VER="\$(basename \$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/mikefarah/yq/releases/latest))" ; \
+           curl -fsSL -o \${TEMP_DIR}/yq.tar.gz https://github.com/mikefarah/yq/releases/download/\${YQ_VER}/yq_linux_amd64.tar.gz ; \
+           tar -xzf \${TEMP_DIR}/yq.tar.gz -C \${TEMP_DIR} ; \
+           cp \${TEMP_DIR}/yq_linux_amd64 /usr/local/bin/yq ; \
+           chmod +x /usr/local/bin/yq ; \
+           rm -rf "\${TEMP_DIR}" ; \
+           mkdir -p /usr/local/quarkus-cli/lib ; \
+           mkdir /usr/local/quarkus-cli/bin ; \
+           TEMP_DIR="\$(mktemp -d)" ; \
+           curl -fsSL -o \${TEMP_DIR}/quarkus-cli.tgz https://github.com/quarkusio/quarkus/releases/download/\${QUARKUS_VERSION}/quarkus-cli-\${QUARKUS_VERSION}.tar.gz ; \
+           tar -xzf \${TEMP_DIR}/quarkus-cli.tgz -C \${TEMP_DIR} ; \
+           cp \${TEMP_DIR}/quarkus-cli-\${QUARKUS_VERSION}/bin/quarkus /usr/local/quarkus-cli/bin ; \
+           cp \${TEMP_DIR}/quarkus-cli-\${QUARKUS_VERSION}/lib/quarkus-cli-\${QUARKUS_VERSION}-runner.jar /usr/local/quarkus-cli/lib ; \
+           rm -rf "\${TEMP_DIR}" ; \
+           chmod +x /usr/local/quarkus-cli/bin/quarkus ; \
+           ln -s /usr/local/quarkus-cli/bin/quarkus /usr/local/bin/quarkus ; \
+           TEMP_DIR="\$(mktemp -d)" ; \
+           cd "\${TEMP_DIR}"; \
+           curl -fsSL -o kubedock.tgz https://github.com/joyrex2001/kubedock/releases/download/\${KUBEDOCK_VERSION}/kubedock_\${KUBEDOCK_VERSION}_linux_amd64.tar.gz ; \
+           tar -xzf kubedock.tgz ; \
+           cp kubedock /usr/local/bin ; \
+           chmod +x /usr/local/bin/kubedock ; \
+           rm -rf "\${TEMP_DIR}" ; \
+           chgrp -R 0 /home ; \
+           chmod -R g=u /home \${WORK_DIR}
+         USER 10001
+         WORKDIR \${WORK_DIR}
+     strategy:
+       type: Docker
+     output:
+       to:
+         kind: ImageStreamTag
+         name: quarkus:latest
+   EOF
+   ```
 
-```bash
-echo https://$(oc get route devspaces -n openshift-devspaces -o jsonpath={.spec.host})
-```
+1. Build the image:
 
-```bash
-oc policy add-role-to-user quarkus-dev-services developer -n developer-devspaces
-```
+   ```bash
+   oc start-build quarkus -n eclipse-che-images -F
+   ```
+
+## Log into OpenShift Dev Spaces
+
+1. Get the URL for the dev-spaces route:
+
+   ```bash
+   echo https://$(oc get route devspaces -n openshift-devspaces -o jsonpath={.spec.host})
+   ```
+
+## WIP - WIP - WIP
+
+1. Log into Dev Spaces:
+
+   ![Demo Image](./readme-images/login-authorize-access.png)
+
+   ```bash
+   oc policy add-role-to-user quarkus-dev-services developer -n developer-devspaces
+   ```
 
 ## Demo Quarkus Dev Services
 
