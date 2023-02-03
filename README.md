@@ -268,6 +268,146 @@ echo https://$(oc get route devspaces -n openshift-devspaces -o jsonpath={.spec.
 oc policy add-role-to-user quarkus-dev-services developer -n developer-devspaces
 ```
 
+## Demo Quarkus Dev Services
+
+```bash
+cd /projects
+```
+
+```bash
+quarkus create
+```
+
+```bash
+Creating an app (default project type, see --help).
+Looking for the newly published extensions in registry.quarkus.io
+-----------
+
+applying codestarts...
+📚  java
+🔨  maven
+📦  quarkus
+📝  config-properties
+🔧  dockerfiles
+🔧  maven-wrapper
+🚀  resteasy-reactive-codestart
+
+-----------
+[SUCCESS] ✅  quarkus project has been successfully generated in:
+--> /projects/che-quarkus-demo/code-with-quarkus
+-----------
+Navigate into this directory and get started: quarkus dev
+bash-5.1$ 
+```
+
+```bash
+cd code-with-quarkus
+```
+
+```bash
+mvn package
+```
+
+```bash
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running org.acme.GreetingResourceTest
+2023-02-03 18:41:00,691 INFO  [io.quarkus] (main) code-with-quarkus 1.0.0-SNAPSHOT on JVM (powered by Quarkus 2.16.1.Final) started in 11.094s. Listening on: http://localhost:8081
+2023-02-03 18:41:01,201 INFO  [io.quarkus] (main) Profile test activated. 
+2023-02-03 18:41:01,201 INFO  [io.quarkus] (main) Installed features: [cdi, resteasy-reactive, smallrye-context-propagation, vertx]
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 21.581 s - in org.acme.GreetingResourceTest
+2023-02-03 18:41:08,096 INFO  [io.quarkus] (main) code-with-quarkus stopped in 0.304s
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- maven-jar-plugin:2.4:jar (default-jar) @ code-with-quarkus ---
+[INFO] Building jar: /projects/code-with-quarkus/target/code-with-quarkus-1.0.0-SNAPSHOT.jar
+[INFO] 
+[INFO] --- quarkus-maven-plugin:2.16.1.Final:build (default) @ code-with-quarkus ---
+[INFO] [io.quarkus.deployment.QuarkusAugmentor] Quarkus augmentation completed in 8193ms
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  55.588 s
+[INFO] Finished at: 2023-02-03T18:41:17Z
+[INFO] ------------------------------------------------------------------------
+```
+
+```bash
+quarkus ext add oidc
+```
+
+`pom.xml`
+
+```xml
+<dependency>
+  <groupId>io.quarkus</groupId>
+  <artifactId>quarkus-test-keycloak-server</artifactId>
+  <scope>test</scope>
+</dependency>
+```
+
+`src/test/java/org/acme/GreetingResourceTest.java`
+
+```java
+package org.acme;
+
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.CoreMatchers.is;
+import io.quarkus.test.keycloak.client.KeycloakTestClient;
+
+@QuarkusTest
+public class GreetingResourceTest {
+
+    KeycloakTestClient keycloak = new KeycloakTestClient();
+
+    @Test
+    public void testHelloEndpoint() {
+        given()
+          .auth().oauth2(getAccessToken("alice"))
+          .when().get("/hello")
+          .then()
+             .statusCode(200)
+             .body(is("Hello from RESTEasy Reactive"));
+    }
+    protected String getAccessToken(String user) {
+        return keycloak.getAccessToken(user);
+    }
+}
+```
+
+`src/main/java/org/acme/GreetingResource.java`
+
+```java
+package org.acme;
+
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import io.quarkus.security.Authenticated;
+import javax.annotation.security.RolesAllowed;
+
+@Path("/hello")
+@Authenticated
+public class GreetingResource {
+
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    @RolesAllowed({"user","admin"})
+    public String hello() {
+        return "Hello from RESTEasy Reactive";
+    }
+}
+```
+
 ```bash
 kubedock server --port-forward
 ```
