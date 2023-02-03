@@ -10,7 +10,7 @@ The first step, is to install OpenShift Local if you don't already have it.
 
 1. Go To: [https://developers.redhat.com/products/openshift/overview](https://developers.redhat.com/products/openshift/overview){:target="_blank"}
 
-   ![Demo Image](./readme-images/install-openshift-local-entry.png)
+   <img src="./readme-images/install-openshift-local-entry.png" width="75%"/>
 
 1. Select `Install Red Hat OpenShift on your laptop`
 
@@ -22,7 +22,7 @@ The first step, is to install OpenShift Local if you don't already have it.
 
    1. Download your pull secret.  This will give you access to all of the Operators in the Red Hat operator catalog.
 
-   ![Demo Image](./readme-images/download-openshift-local.png)
+   <img src="./readme-images/download-openshift-local.png" width="75%"/>
 
 1. Install OpenShift Local with the installation package that you downloaded.
 
@@ -92,27 +92,27 @@ The first step, is to install OpenShift Local if you don't already have it.
 
 1. Navigate to the `Operator Hub`
 
-   ![Demo Image](./readme-images/operator-hub.png)
+   <img src="./readme-images/operator-hub.png" width="75%"/>
 
 1. Type `dev spaces` into the search, and select `Red Hat OpenShift Dev Spaces`:
 
-   ![Demo Image](./readme-images/operator-search.png)
+   <img src="./readme-images/operator-search.png" width="75%"/>
 
 1. Click `Install`:
 
-   ![Demo Image](./readme-images/operator-install-select.png)
+   <img src="./readme-images/operator-install-select.png" width="75%"/>
 
 1. Click `Install`:
 
-   ![Demo Image](./readme-images/operator-install-confirm.png)
+   <img src="./readme-images/operator-install-confirm.png" width="75%"/>
 
    The Operator should begin installing:
 
-   ![Demo Image](./readme-images/operator-installing.png)
+   <img src="./readme-images/operator-installing.png" width="50%"/>
 
 1. Observe the installed Operators, by clicking on `Installed Operators`  underneath `Operator Hub` in the left nav menu bar:
 
-   ![Demo Image](./readme-images/installed-operators.png)
+   <img src="./readme-images/installed-operators.png" width="75%"/>
 
 ## Create the OpenShift Dev Spaces CheCluster Instance
 
@@ -164,38 +164,6 @@ The first step, is to install OpenShift Local if you don't already have it.
          pvcStrategy: per-user
      gitServices: {}
      networking: {}
-   EOF
-   ```
-
-   ```bash
-   cat << EOF | oc apply -f -
-   apiVersion: rbac.authorization.k8s.io/v1
-   kind: ClusterRole
-   metadata:
-     name: quarkus-dev-services
-   rules:
-   - apiGroups:
-     - batch
-     resources:
-     - jobs
-     - jobs/status
-     verbs:
-     - get
-     - list
-     - watch
-   - apiGroups:
-     - ""
-     resources:
-     - pods/portforward
-     verbs:
-     - get
-     - list
-     - watch
-     - create
-     - delete
-     - deletecollection
-     - patch
-     - update
    EOF
    ```
 
@@ -338,17 +306,89 @@ The first step, is to install OpenShift Local if you don't already have it.
    echo https://$(oc get route devspaces -n openshift-devspaces -o jsonpath={.spec.host})
    ```
 
-## WIP - WIP - WIP
+1. Paste that URL into your browser and click `Log in with OpenShift`
 
-1. Log into Dev Spaces:
+   <img src="./readme-images/dev-spaces-login-openshift-oauth.png" width="50%"/>
 
-   ![Demo Image](./readme-images/login-authorize-access.png)
+1. Log in with user: `developer`, password: `developer`:
+
+   <img src="./readme-images/openshift-local-login.png" width="50%"/>
+
+1. The first time, you will be asked to authorize access:
+
+   Click `Allow selected permissions`:
+
+   <img src="./readme-images/login-authorize-access.png" width="50%"/>
+
+1. You should now be at the Dev Spaces dashboard:
+
+   <img src="./readme-images/create-workspace.png" width="75%"/>
+
+## Add a role to your user
+
+At this point we need to take a quick detour back to the terminal with `kubeadmin` privileges.  One capability that we need to enable Quarkus Dev Services, is not yet in Dev Spaces.  We need the ability to create `port-forward` from a pod in our namespace back to a running shell in our workspace.
+
+Let's add that ability now, by creating a new `ClusterRole`, and binding our user to it in the namespace that Dev Spaces has provisioned for us.
+
+1. Open a terminal and login to the OpenShift Local instance with the CLI:
+
+   ```bash
+   oc login -u kubeadmin -p crc-admin https://api.crc.testing:6443
+   ```
+
+1. Create the cluster role:
+
+   ```bash
+   cat << EOF | oc apply -f -
+   apiVersion: rbac.authorization.k8s.io/v1
+   kind: ClusterRole
+   metadata:
+     name: quarkus-dev-services
+   rules:
+   - apiGroups:
+     - batch
+     resources:
+     - jobs
+     - jobs/status
+     verbs:
+     - get
+     - list
+     - watch
+   - apiGroups:
+     - ""
+     resources:
+     - pods/portforward
+     verbs:
+     - get
+     - list
+     - watch
+     - create
+     - delete
+     - deletecollection
+     - patch
+     - update
+   EOF
+   ```
+
+1. Add that role to your user in the provisioned namespace:
 
    ```bash
    oc policy add-role-to-user quarkus-dev-services developer -n developer-devspaces
    ```
 
+## Create A Workspace
+
+![T](./readme-images/create-workspace.png)
+
+![](./readme-images/workspace-landing.png)
+
+![](./readme-images/open-workspace.png)
+
+![](./readme-images/workspace-theme-changed.png)
+
 ## Demo Quarkus Dev Services
+
+![](./readme-images/open-terminal.png)
 
 ```bash
 cd /projects
@@ -422,6 +462,14 @@ mvn package
 quarkus ext add oidc
 ```
 
+![](./readme-images/add-folder-to-workspace.png)
+
+![](./readme-images/add-folder-to-workspace-select.png)
+
+![](./readme-images/add-folder-to-worspace-confirm.png)
+
+![](./readme-images/add-folder-to-workspace-trust.png)
+
 `pom.xml`
 
 ```xml
@@ -488,6 +536,8 @@ public class GreetingResource {
 }
 ```
 
+![](./readme-images/open-split-terminal.png)
+
 ```bash
 kubedock server --port-forward
 ```
@@ -505,3 +555,5 @@ export DOCKER_HOST=tcp://127.0.0.1:2475
 ```bash
 mvn test
 ```
+
+![](./readme-images/mvn-test.png)
