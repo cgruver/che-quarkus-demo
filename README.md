@@ -4,55 +4,95 @@
 
 Demo for Quarkus Dev Mode in Eclipse Che
 
-```bash
-crc setup
-```
+## Install & Configure OpenShift Local
 
-```bash
-crc config set memory 16384
-crc config set disk-size 100
-crc config set kubeadmin-password crc-admin
-```
+The first step, is to install OpenShift Local if you don't already have it.
 
-```bash
-crc start
-```
+1. Go To: [https://developers.redhat.com/products/openshift/overview](https://developers.redhat.com/products/openshift/overview){:target="_blank"}
 
-```bash
-INFO All operators are available. Ensuring stability... 
-INFO Operators are stable (2/3)...                
-INFO Operators are stable (3/3)...                
-INFO Adding crc-admin and crc-developer contexts to kubeconfig... 
-Started the OpenShift cluster.
+   ![Demo Image](./readme-images/install-openshift-local-entry.png)
 
-The server is accessible via web console at:
-  https://console-openshift-console.apps-crc.testing
+1. Select `Install Red Hat OpenShift on your laptop`
 
-Log in as administrator:
-  Username: kubeadmin
-  Password: crc-admin
+   This will take you to a login page.  If you don't have a Red Hat developer account you will register for one here.  It's free and you'll get access to a lot of ebooks, guides, and tools.
 
-Log in as user:
-  Username: developer
-  Password: developer
+1. From the landing page after you log in, you will need to download two things:
 
-Use the 'oc' command line interface:
-  $ eval $(crc oc-env)
-  $ oc login -u developer https://api.crc.testing:6443
-```
+   1. Download the OpenShift Local installation package for your OS and architecture
+
+   1. Download your pull secret.  This will give you access to all of the Operators in the Red Hat operator catalog.
+
+   ![Demo Image](./readme-images/download-openshift-local.png)
+
+1. Install OpenShift Local with the installation package that you downloaded.
+
+1. Open a terminal and prepare your workstation to run the cluster:
+
+   ```bash
+   crc setup
+   ```
+
+   __Note:__ This will take a while.  OpenShift Local will first download the latest cluster bundle, decompress it, and set up your system to run the cluster.
+
+1. Configure your OpenShift Local cluster: __Note:__ You need at least 16GB of RAM on your workstation, 32GB is better.  We're going to configure the OpenShift machine with 12GB.  
+
+   ```bash
+   crc config set cpus 6
+   crc config set memory 12288
+   crc config set disk-size 100
+   crc config set kubeadmin-password crc-admin
+   ```
+
+1. Start OpenShift Local:
+
+   ```bash
+   crc start
+   ```
+
+   After the cluster starts, you should see output similar to:
+
+   ```bash
+   INFO All operators are available. Ensuring stability... 
+   INFO Operators are stable (2/3)...                
+   INFO Operators are stable (3/3)...                
+   INFO Adding crc-admin and crc-developer contexts to kubeconfig... 
+   Started the OpenShift cluster.
+
+   The server is accessible via web console at:
+     https://console-openshift-console.apps-crc.testing
+
+   Log in as administrator:
+     Username: kubeadmin
+     Password: crc-admin
+
+   Log in as user:
+     Username: developer
+     Password: developer
+
+   Use the 'oc' command line interface:
+     $ eval $(crc oc-env)
+     $ oc login -u developer https://api.crc.testing:6443
+   ```
+
+## Install the OpenShift Dev Spaces Operator
+
+![Demo Image](./readme-images/operator-hub.png)
+
+![Demo Image](./readme-images/operator-search.png)
+
+![Demo Image](./readme-images/operator-install-select.png)
+
+![Demo Image](./readme-images/operator-install-confirm.png)
+
+![Demo Image](./readme-images/operator-installing.png)
+
+![Demo Image](./readme-images/installed-operators.png)
+
+## Create the OpenShift Dev Spaces CheCluster Instance
 
 ```bash
 oc login -u kubeadmin -p crc-admin https://api.crc.testing:6443
 ```
-
-Download the Dev Spaces CLI:
-
-[https://developers.redhat.com/products/openshift-dev-spaces/download](https://developers.redhat.com/products/openshift-dev-spaces/download)
-
-Install The CLI:
-
-Installation Instructions: [https://access.redhat.com/documentation/en-us/red_hat_openshift_dev_spaces/3.3/html/administration_guide/installing-devspaces](https://access.redhat.com/documentation/en-us/red_hat_openshift_dev_spaces/3.3/html/administration_guide/installing-devspaces)
-
 
 ```bash
 cat << EOF | oc apply -f -
