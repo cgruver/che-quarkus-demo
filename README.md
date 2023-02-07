@@ -161,7 +161,7 @@ The first step, is to install OpenShift Local if you don't already have it.
          template: <username>-devspaces
        secondsOfInactivityBeforeIdling: 1800
        storage:
-         pvcStrategy: per-user
+         pvcStrategy: per-workspace
      gitServices: {}
      networking: {}
    EOF
