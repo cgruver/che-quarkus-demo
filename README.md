@@ -1,6 +1,12 @@
-## Work In Progress.  Demo coming soon...
+# Demo for Quarkus Dev Mode in OpenShift Dev Spaces / Eclipse Che
 
-Demo for Quarkus Dev Mode in Eclipse Che
+## Prerequisite
+
+You will need access to an OpenShift cluster with the Dev Spaces or Eclipse Che operator installed.
+
+You can run this on your local workstation by using OpenShift Local.  It will be a bit sluggish because you're running a LOT of infrastructure on a single node, but it does work.
+
+Follow these instructions to set up OpenShift Local: __[Install OpenShift Local and OpenShift Dev Spaces](./InstallCRC.md)__
 
    ```bash
    cat << EOF | oc apply -f -

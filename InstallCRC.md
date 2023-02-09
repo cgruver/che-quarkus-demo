@@ -1,6 +1,6 @@
-# Install & Configure OpenShift Local
+# Install OpenShift Local and OpenShift Dev Spaces
 
-1. Go To: [https://developers.redhat.com/products/openshift/overview](https://developers.redhat.com/products/openshift/overview){:target="_blank"}
+1. Go To: [https://developers.redhat.com/products/openshift/overview](https://developers.redhat.com/products/openshift/overview)
 
    <img src="./readme-images/install-openshift-local-entry.png" width="75%"/>
 
@@ -158,3 +158,13 @@
      networking: {}
    EOF
    ```
+
+1. Wait for the Dev Spaces cluster to complete its rollout:
+
+   In the console, select from the left hand nav menu `Workloads -> Pods`, Then select the `Project`: `openshift-devspaces` from the drop down in the top left.
+
+   When the rollout is complete, the list of running pods should look somethings like:
+
+   <img src="./readme-images/running-che-pods.png" width="75%"/>
+
+You can now proceed with creating a Dev Spaces Workspace.
