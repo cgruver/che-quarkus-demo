@@ -86,6 +86,8 @@ We are going to:
 
    1. We are grabbing files from two other images and copying them into our new image.
 
+      __Note:__ I have created an image in my Quay.io account which has the tooling for this workspace demo in it.  The image is a `From scratch` image which is used purely as a container to hold files to be added to other images.  You can see the Dockerfile and build script for it in the `./quarkus-tools` directory of this project.  I sometimes do this to provide packaging for environments that have limited internet access.  It's a great way to ensure consistent versioning, and provide security scanning for the open source tooling that you might pull from Github for example.
+
    ```bash
    cat << EOF | oc apply -f -
    apiVersion: build.openshift.io/v1
