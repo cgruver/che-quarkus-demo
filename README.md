@@ -1,6 +1,6 @@
 # Demo for Quarkus Dev Mode in OpenShift Dev Spaces / Eclipse Che
 
-This project is a quick demo to show you how you can leverage Quarkus Dev Services in OpenShift Dev Spaces / Eclipse Che.
+This project is a quick demo to show you how you can leverage Quarkus Dev Services in [OpenShift Dev Spaces](https://developers.redhat.com/products/openshift-dev-spaces/overview) / [Eclipse Che](https://www.eclipse.org/che/).
 
 If you are not familiar with Quarkus Dev Services, check it out here: [https://quarkus.io/guides/dev-services](https://quarkus.io/guides/dev-services)
 
