@@ -1,12 +1,41 @@
 # Demo for Quarkus Dev Mode in OpenShift Dev Spaces / Eclipse Che
 
+This project is a quick demo to show you how you can leverage Quarkus Dev Services in OpenShift Dev Spaces / Eclipse Che.
+
+If you are not familiar with Quarkus Dev Services, check it out here: [https://quarkus.io/guides/dev-services](https://quarkus.io/guides/dev-services)
+
+Because running nested containers is not yet supported in OpenShift without completely trashing its security posture, we are going to use a clever resource to assist us.  Check out the `Kubedock` project.  It is going to allow us to mimic a running Docker service in our Dev Spaces environment.  [https://github.com/joyrex2001/kubedock](https://github.com/joyrex2001/kubedock)
+
 ## Prerequisite
 
 You will need access to an OpenShift cluster with the Dev Spaces or Eclipse Che operator installed.
 
-You can run this on your local workstation by using OpenShift Local.  It will be a bit sluggish because you're running a LOT of infrastructure on a single node, but it does work.
+You can run this on your local workstation by using OpenShift Local.  It will be a bit sluggish because you're running a LOT of infrastructure on a single node, but it does work.  The more CPU and RAM you can give it the better.  I ran it with 16GB of RAM and 6 CPUs while developing this demo.
 
 Follow these instructions to set up OpenShift Local: __[Install OpenShift Local and OpenShift Dev Spaces](./InstallCRC.md)__
+
+## Setup to Run The Demo
+
+Before we run the demo, there are a few things to set up.
+
+We are going to:
+
+* Create a namespace for OpenShift Dev Spaces workspace container images.
+* Grant all service accounts in the cluster permission to pull images from the new namespace
+* Create a BuildConfig of a Quarkus tooling image
+   We are doing this partially to save time during deployment, to avoid pulling a large image across the internet.  But, also to show you that you can...
+   __Note:__ The custom workspace image that we are going to create includes `Kubedock` which is an essential part of this demo.
+* Build the Quarkus Tooling Image
+
+1. You don't need cluster admin privileges for this.  You can run it as a normal user with namespace provisioning privileges, which are enabled out of the box.
+
+   If you are using OpenShift local, log in from a terminal as the `developer` user.
+
+   ```bash
+   oc login -u developer https://api.crc.testing:6443
+   ```
+
+1. Create a namespace to hold workspace container images:
 
    ```bash
    cat << EOF | oc apply -f -
@@ -14,7 +43,13 @@ Follow these instructions to set up OpenShift Local: __[Install OpenShift Local 
    kind: Namespace
    metadata:
      name: eclipse-che-images
-   ---
+   EOF
+   ```
+
+1. Create a RoleBinding to grant permission for service accounts to pull images from this namespace:
+
+   ```bash
+   cat << EOF | oc apply -f -
    apiVersion: rbac.authorization.k8s.io/v1
    kind: RoleBinding
    metadata:
@@ -28,13 +63,31 @@ Follow these instructions to set up OpenShift Local: __[Install OpenShift Local 
    - apiGroup: rbac.authorization.k8s.io
      kind: Group
      name: system:serviceaccounts
-   ---
+   EOF
+   ```
+
+1. Create an ImageStream for a Quarkus tooling image
+
+   ```bash
+   cat << EOF | oc apply -f -
    apiVersion: image.openshift.io/v1
    kind: ImageStream
    metadata:
      name: quarkus
      namespace: eclipse-che-images
-   ---
+   EOF
+   ```
+
+1. Create the BuildConfig for our Quarkus image.
+
+   Note two things here:
+
+   1. We are using an embedded Dockerfile to build the image.
+
+   1. We are grabbing files from two other images and copying them into our new image.
+
+   ```bash
+   cat << EOF | oc apply -f -
    apiVersion: build.openshift.io/v1
    kind: BuildConfig
    metadata:
@@ -49,6 +102,10 @@ Follow these instructions to set up OpenShift Local: __[Install OpenShift Local 
          ARG JAVA_PACKAGE=java-17-openjdk-devel
          ARG USER_HOME_DIR="/home/user"
          ARG WORK_DIR="/projects"
+         ARG TOOLS_IMAGE="quay.io/cgruver0/che/quarkus-tools"
+         ARG TOOLS_IMAGE_TAG="latest"
+         ARG OC_IMAGE="image-registry.openshift-image-registry.svc:5000/openshift/cli"
+         ARG OC_IMAGE_TAG="latest"
          ENV HOME=\${USER_HOME_DIR}
          ENV BUILDAH_ISOLATION=chroot
          ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
@@ -56,8 +113,10 @@ Follow these instructions to set up OpenShift Local: __[Install OpenShift Local 
          ENV MAVEN_CONFIG="\${HOME}/.m2"
          ENV GRAALVM_HOME=/usr/local/tools/graalvm
          ENV JAVA_HOME=/etc/alternatives/jre_17_openjdk
-         COPY --from=quay.io/cgruver0/che/quarkus-tools:latest /tools/ /usr/local/tools
-         COPY --from=image-registry.openshift-image-registry.svc:5000/openshift/cli:latest /usr/bin/oc /usr/bin/oc
+         # copy Maven, Graalvm, Quarkus CLI, Kubedock, and some other tools from my quarkus tools image.
+         COPY --from=\${TOOLS_IMAGE}:\${TOOLS_IMAGE_TAG} /tools/ /usr/local/tools
+         # Copy the OpenShift CLI from the cli image in the internal registry
+         COPY --from=\${OC_IMAGE}:\${OC_IMAGE_TAG} /usr/bin/oc /usr/bin/oc
          RUN microdnf --disableplugin=subscription-manager install -y openssl compat-openssl11 libbrotli git tar gzip zip unzip which shadow-utils bash zsh wget jq podman buildah skopeo glibc-devel zlib-devel gcc libffi-devel libstdc++-devel gcc-c++ glibc-langpack-en ca-certificates \${JAVA_PACKAGE}; \
            microdnf update -y ; \
            microdnf clean all ; \
@@ -94,6 +153,8 @@ Follow these instructions to set up OpenShift Local: __[Install OpenShift Local 
 
 ## Log into OpenShift Dev Spaces
 
+Next, we need to log into OpenShift Dev Spaces.  We not going to do anything with it yet, because we need to make a change to the namespace that Dev Spaces will provision for us.
+
 1. Get the URL for the dev-spaces route:
 
    ```bash
@@ -120,17 +181,19 @@ Follow these instructions to set up OpenShift Local: __[Install OpenShift Local 
 
 ## Add a role to your user
 
-At this point we need to take a quick detour back to the terminal with `cluster-admin` privileges.  One capability that we need to enable Quarkus Dev Services, is not yet in Dev Spaces.  We need the ability to create `port-forward` from a pod in our namespace back to a running shell in our workspace.
+At this point we need to take a quick detour back to the terminal with `cluster-admin` privileges.  One capability that `Kubedock` needs in order to enable Quarkus Dev Services is not yet in Dev Spaces.  We need the ability to create `port-forward` from a pod in our namespace back to a running shell in our workspace.  The `Kubedock` utility that we are using, also needs the ability to list Jobs in our namespace.
 
 Let's add that ability now, by creating a new `ClusterRole`, and binding our user to it in the namespace that Dev Spaces has provisioned for us.
 
 1. Open a terminal and login to the OpenShift cluster as a user with `cluster-admin` privileges:
 
-   If you are using the CRC install from above, it looks like this:
+   If you are using OpenShift Local, it looks like this:
 
    ```bash
-   oc login -u kubeadmin -p crc-admin https://api.crc.testing:6443
+   oc login -u kubeadmin https://api.crc.testing:6443
    ```
+
+   __Note:__ If you followed my OpenShift Local install instructions, then your `kubeadmin` password is `crc-admin`.  If you did your own install, the you can get the password by running: `crc console --credentials`
 
 1. Create the cluster role:
 
@@ -174,107 +237,33 @@ Let's add that ability now, by creating a new `ClusterRole`, and binding our use
 
 ## Create A Workspace
 
-![T](./readme-images/create-workspace.png)
+Now, we are ready to create a namespace and run the demo:
 
-![](./readme-images/workspace-landing.png)
+1. Go back to the Dev Spaces dashboard that we logged into previously:
 
-![](./readme-images/open-workspace.png)
+   <img src="./readme-images/create-workspace.png" width="75%"/>
 
-![](./readme-images/workspace-theme-changed.png)
+1. In the `Import from Git` form, paste the Git URL for this project:
 
-## Demo Quarkus Dev Services
+   <img src="./readme-images/paste-git-url.png" width="50%"/>
 
-![](./readme-images/open-terminal.png)
+1. You should now see the workspace starting:
 
-```bash
-cd /projects
-```
+   <img src="./readme-images/workspace-starting.png" width="75%"/>
 
-```bash
-quarkus create
-```
+1. After the workspace starts, you should see the VS Code landing page:
 
-```bash
-Creating an app (default project type, see --help).
-Looking for the newly published extensions in registry.quarkus.io
------------
+   <img src="./readme-images/workspace-landing.png" width="75%"/>
 
-applying codestarts...
-📚  java
-🔨  maven
-📦  quarkus
-📝  config-properties
-🔧  dockerfiles
-🔧  maven-wrapper
-🚀  resteasy-reactive-codestart
+1. There is a very simple VS Code workspace file included with this project.  Dev Spaces will detect this and prompt you to open the workspace:
 
------------
-[SUCCESS] ✅  quarkus project has been successfully generated in:
---> /projects/che-quarkus-demo/code-with-quarkus
------------
-Navigate into this directory and get started: quarkus dev
-bash-5.1$ 
-```
+   <img src="./readme-images/open-workspace.png" width="75%"/>
 
-```bash
-cd code-with-quarkus
-```
+## Demo Quarkus Dev Services for Integration Testing
 
-```bash
-mvn package
-```
+I have included code for a simple Quarkus app that will use a KeyCloak OIDC provider service as part of the integration testing for this demo.  Check out the OIDC dev service here: [https://quarkus.io/guides/security-openid-connect-dev-services](https://quarkus.io/guides/security-openid-connect-dev-services)
 
-```bash
-[INFO] 
-[INFO] -------------------------------------------------------
-[INFO]  T E S T S
-[INFO] -------------------------------------------------------
-[INFO] Running org.acme.GreetingResourceTest
-2023-02-03 18:41:00,691 INFO  [io.quarkus] (main) code-with-quarkus 1.0.0-SNAPSHOT on JVM (powered by Quarkus 2.16.1.Final) started in 11.094s. Listening on: http://localhost:8081
-2023-02-03 18:41:01,201 INFO  [io.quarkus] (main) Profile test activated. 
-2023-02-03 18:41:01,201 INFO  [io.quarkus] (main) Installed features: [cdi, resteasy-reactive, smallrye-context-propagation, vertx]
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 21.581 s - in org.acme.GreetingResourceTest
-2023-02-03 18:41:08,096 INFO  [io.quarkus] (main) code-with-quarkus stopped in 0.304s
-[INFO] 
-[INFO] Results:
-[INFO] 
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] 
-[INFO] 
-[INFO] --- maven-jar-plugin:2.4:jar (default-jar) @ code-with-quarkus ---
-[INFO] Building jar: /projects/code-with-quarkus/target/code-with-quarkus-1.0.0-SNAPSHOT.jar
-[INFO] 
-[INFO] --- quarkus-maven-plugin:2.16.1.Final:build (default) @ code-with-quarkus ---
-[INFO] [io.quarkus.deployment.QuarkusAugmentor] Quarkus augmentation completed in 8193ms
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  55.588 s
-[INFO] Finished at: 2023-02-03T18:41:17Z
-[INFO] ------------------------------------------------------------------------
-```
-
-```bash
-quarkus ext add oidc
-```
-
-![](./readme-images/add-folder-to-workspace.png)
-
-![](./readme-images/add-folder-to-workspace-select.png)
-
-![](./readme-images/add-folder-to-worspace-confirm.png)
-
-![](./readme-images/add-folder-to-workspace-trust.png)
-
-`pom.xml`
-
-```xml
-<dependency>
-  <groupId>io.quarkus</groupId>
-  <artifactId>quarkus-test-keycloak-server</artifactId>
-  <scope>test</scope>
-</dependency>
-```
+The code for the REST resource and test are below:
 
 `src/test/java/org/acme/GreetingResourceTest.java`
 
@@ -332,24 +321,40 @@ public class GreetingResource {
 }
 ```
 
-![](./readme-images/open-split-terminal.png)
+### Run the Demo
 
-```bash
-kubedock server --port-forward
-```
+1. In the top left of your workspace, open a Terminal:
 
-```bash
+   Select `New Terminal`
 
-```
+   <img src="./readme-images/open-terminal.png" width="75%"/>
 
-```bash
-export TESTCONTAINERS_RYUK_DISABLED=true
-export TESTCONTAINERS_CHECKS_DISABLE=true
-export DOCKER_HOST=tcp://127.0.0.1:2475
-```
+1. In the bottom left menu of the terminal pane, open a split terminal:
 
-```bash
-mvn test
-```
+   <img src="./readme-images/open-split-terminal.png" width="50%"/>
 
-![](./readme-images/mvn-test.png)
+1. In the right hand terminal, start the `kubedock` server:
+
+   ```bash
+   kubedock server --port-forward
+   ```
+
+1. In the left hand terminal, set the environment vars for `kubedock`:
+
+   ```bash
+   export TESTCONTAINERS_RYUK_DISABLED=true
+   export TESTCONTAINERS_CHECKS_DISABLE=true
+   export DOCKER_HOST=tcp://127.0.0.1:2475
+   ```
+
+1. In the left hand terminal, run the tests for the demo app:
+
+   ```bash
+   mvn test
+   ```
+
+1. Observe the tests run against a KeyCloak server provisioned by `kubedock`:
+
+   ![Image](./readme-images/mvn-test.png)
+
+Pretty cool! Right!?
