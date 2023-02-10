@@ -341,6 +341,10 @@ public class GreetingResource {
    kubedock server --port-forward
    ```
 
+   __Note:__ You can answer `No` to the dialogs that pop up about port redirects during this demo:
+
+   <img src="./readme-images/che-redirect-dialog.png" width="50%"/>
+
 1. In the left hand terminal, set the environment vars for `kubedock`:
 
    ```bash
