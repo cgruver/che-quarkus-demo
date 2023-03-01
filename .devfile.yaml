@@ -18,15 +18,6 @@ components:
       - /dev/null
     command:
       - tail
-    env:
-      - name: CHE_DASHBOARD_URL
-        value: 'https://eclipse-che.apps.okd4-region-01.dc1.clg.lab'
-      - name: CHE_PLUGIN_REGISTRY_URL
-        value: 'https://eclipse-che.apps.okd4-region-01.dc1.clg.lab/plugin-registry/v3'
-      - name: CHE_PLUGIN_REGISTRY_INTERNAL_URL
-        value: 'http://plugin-registry.eclipse-che.svc:8080/v3'
-      - name: OPENVSX_REGISTRY_URL
-        value: ''
     image: registry.access.redhat.com/ubi9/ubi-minimal
     memoryLimit: 64M
     mountSources: true
