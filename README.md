@@ -119,6 +119,7 @@ We are going to:
          COPY --from=\${TOOLS_IMAGE}:\${TOOLS_IMAGE_TAG} /tools/ /usr/local/tools
          # Copy the OpenShift CLI from the cli image in the internal registry
          COPY --from=\${OC_IMAGE}:\${OC_IMAGE_TAG} /usr/bin/oc /usr/bin/oc
+         COPY --from=\${OC_IMAGE}:\${OC_IMAGE_TAG}  /usr/bin/kubectl /usr/bin/kubectl
          RUN microdnf --disableplugin=subscription-manager install -y openssl compat-openssl11 libbrotli git tar gzip zip unzip which shadow-utils bash zsh wget jq podman buildah skopeo glibc-devel zlib-devel gcc libffi-devel libstdc++-devel gcc-c++ glibc-langpack-en ca-certificates \${JAVA_PACKAGE}; \
            microdnf update -y ; \
            microdnf clean all ; \
@@ -344,14 +345,6 @@ public class GreetingResource {
    __Note:__ You can answer `No` to the dialogs that pop up about port redirects during this demo:
 
    <img src="./readme-images/che-redirect-dialog.png" width="50%"/>
-
-1. In the left hand terminal, set the environment vars for `kubedock`:
-
-   ```bash
-   export TESTCONTAINERS_RYUK_DISABLED=true
-   export TESTCONTAINERS_CHECKS_DISABLE=true
-   export DOCKER_HOST=tcp://127.0.0.1:2475
-   ```
 
 1. In the left hand terminal, run the tests for the demo app:
 

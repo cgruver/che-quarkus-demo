@@ -13,6 +13,7 @@ ENV GRAALVM_HOME=/usr/local/tools/graalvm
 ENV JAVA_HOME=/etc/alternatives/jre_17_openjdk
 COPY --from=quay.io/cgruver0/che/quarkus-tools:latest /tools/ /usr/local/tools
 COPY --from=image-registry.openshift-image-registry.svc:5000/openshift/cli:latest /usr/bin/oc /usr/bin/oc
+COPY --from=image-registry.openshift-image-registry.svc:5000/openshift/cli:latest /usr/bin/kubectl /usr/bin/kubectl
 RUN microdnf --disableplugin=subscription-manager install -y openssl compat-openssl11 libbrotli git tar gzip zip unzip which shadow-utils bash zsh wget jq podman buildah skopeo glibc-devel zlib-devel gcc libffi-devel libstdc++-devel gcc-c++ glibc-langpack-en ca-certificates ${JAVA_PACKAGE}; \
   microdnf update -y ; \
   microdnf clean all ; \
