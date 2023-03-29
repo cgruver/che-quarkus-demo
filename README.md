@@ -139,6 +139,7 @@ We are going to:
          USER 10001
          ENV PATH=\${PATH}:/usr/local/tools/bin
          WORKDIR \${WORK_DIR}
+         CMD [ "tail", "-f", "/dev/null" ]
      strategy:
        type: Docker
      output:
