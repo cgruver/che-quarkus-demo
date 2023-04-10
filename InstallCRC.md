@@ -131,23 +131,17 @@
        cheServer:
          debug: false
          logLevel: INFO
-       database:
-         credentialsSecretName: postgres-credentials
-         externalDb: false
-         postgresDb: dbche
-         postgresHostName: postgres
-         postgresPort: '5432'
-         pvc:
-           claimSize: 1Gi
        metrics:
          enable: true
      containerRegistry: {}
      devEnvironments:
+       startTimeoutSeconds: 300
        secondsOfRunBeforeIdling: -1
+       maxNumberOfWorkspacesPerUser: -1
        containerBuildConfiguration:
          openShiftSecurityContextConstraint: container-build
        disableContainerBuildCapabilities: false
-       defaultEditor: che-incubator/che-code/insiders
+       defaultEditor: che-incubator/che-code/latest
        defaultNamespace:
          autoProvision: true
          template: <username>-devspaces
