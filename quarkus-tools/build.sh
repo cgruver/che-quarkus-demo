@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-MAVEN_VERSION=${MAVEN_VERSION:=3.8.7}
+MAVEN_VERSION=${MAVEN_VERSION:=3.9.2}
 QUARKUS_VERSION=${QUARKUS_VERSION:=2.16.1.Final}
 MANDREL_VERSION=${MANDREL_VERSION:=22.3.0.1-Final}
-KUBEDOCK_VERSION=${KUBEDOCK_VERSION:=0.9.2}
+KUBEDOCK_VERSION=${KUBEDOCK_VERSION:=0.11.0}
 IMAGE_PATH=${IMAGE_PATH:=quay.io/cgruver0/che/quarkus-tools}
 IMAGE_TAG=${IMAGE_TAG:=latest}
 
@@ -60,5 +60,5 @@ ln -s ../quarkus-cli/bin/quarkus quarkus
 ln -s ../maven/bin/mvn mvn
 cd -
 
-podman build -t ${IMAGE_PATH}:${IMAGE_TAG} -f quarkus-tools.Dockerfile .
+podman build -t ${IMAGE_PATH}:${IMAGE_TAG} -f quarkus-tools.Containerfile .
 podman push ${IMAGE_PATH}:${IMAGE_TAG}
